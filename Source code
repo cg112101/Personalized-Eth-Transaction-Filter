@@ -1,0 +1,107 @@
+<html>
+  <head>
+    <title>Personalized Eth Transaction Filter</title>
+    <style>
+      #balance {
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      #transactionsDiv {
+        display: none;
+      }
+
+      .dropdown-arrow {
+        border-left: 6px solid transparent;
+        border-right: 6px solid transparent;
+        border-top: 8px solid black;
+        height: 0;
+        width: 0;
+      }
+    </style>
+    <script>
+      function getTransactions() {
+        var address = document.getElementById("address").value;
+        var apiKey = document.getElementById("api_key").value;
+        var filterAddress = document.getElementById("filter_address").value;
+    
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", `http://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest&apikey=${apiKey}`, true);
+    
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState === XMLHttpRequest.DONE && xhr.status === 200) {
+            var balance = JSON.parse(xhr.responseText).result;
+    
+            var xhr2 = new XMLHttpRequest();
+            xhr2.open("GET", `http://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${apiKey}`, true);
+    
+            xhr2.onreadystatechange = function() {
+              if (xhr2.readyState === XMLHttpRequest.DONE && xhr2.status === 200) {
+                var data = JSON.parse(xhr2.responseText);
+    
+                if (data.result.length > 0) {
+                  var resultDiv = document.getElementById("result");
+                  resultDiv.innerHTML = `<div id="balance">Balance: ${balance/10**18} ETH <span class="dropdown-arrow"></span></div><hr />`;
+    
+                  var transactionsDiv = document.createElement("div");
+                  transactionsDiv.id = "transactionsDiv";
+                  transactionsDiv.style.display = "none";
+
+                  for (var i = 0; i < data.result.length; i++) {
+                    var transaction = data.result[i];
+                    transactionsDiv.innerHTML += `<div style="display:flex;justify-content:space-between">
+                                                  <div>
+                                                    <p>Timestamp: ${transaction.timeStamp}</p>
+                                                    <p>To: ${transaction.to}</p>
+                                                    <p>Value: ${transaction.value/10**18} ETH</p>
+                                                    <p>Method: ${transaction.input}</p>
+                                                  </div>
+                                                  <div>
+                                                    <p>Filter Address:</p>
+                                                  </div>
+                                                  <div>`;
+                    if (transaction.to === filterAddress) {
+                      transactionsDiv.innerHTML += `<div style="background-color:Yellow;padding:10px">
+                                                      <p>${filterAddress}</p>
+                                                    </div>`;
+                    } else {
+                      transactionsDiv.innerHTML += `<div style="background-color:white;padding:10px">
+                                                      <p>-</p>
+                                                    </div>`;
+                    }
+                    transactionsDiv.innerHTML += `</div></div><hr />`;
+                  }                             
+                  
+                  resultDiv.appendChild(transactionsDiv);
+                  document.getElementById("balance").addEventListener("click", function() {
+                    transactionsDiv.style.display = transactionsDiv.style.display === "none" ? "block" : "none";
+                  });
+                  
+                } else {
+                  alert("No transactions found for the given address.");
+                }
+              } else if (xhr2.readyState === XMLHttpRequest.DONE) {
+                alert("An error occurred while fetching the data from Etherscan API.");
+              }
+            };
+    
+            xhr2.send();
+          } else if (xhr.readyState === XMLHttpRequest.DONE) {
+            alert("An error occurred while fetching the data from Etherscan API.");
+          }
+        };
+    
+        xhr.send();
+      }
+    </script>    
+  </head>
+  <body>
+    <h1>Personalized Eth Transaction Filter</h1>
+    <p>Filter Wallet Address: <input type="text" id="filter_address" /></p>
+    <p>Your Eth Wallet Address: <input type="text" id="address" /></p>
+    <p>Enter Etherscan API Key: <input type="text" id="api_key" /></p>
+    <p><button onclick="getTransactions()">Get Transactions</button></p>
+    <div id="result"></div>
+  </body>
+</html>
